@@ -1,0 +1,528 @@
+<meta name='viewport' content='width=device-width, initial-scale=1'/><!DOCTYPE html>  <html lang="pa">  
+<head>  
+    <meta charset="UTF-8">  
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">  
+    <title>Galaxy Da Rakha - Punjabi Game</title>  
+    <style>  
+        body {  
+            margin: 0;  
+            padding: 0;  
+            background-color: #000;  
+            overflow: hidden;  
+            font-family: 'Mukta', 'Raavi', 'Arial', sans-serif;  
+            touch-action: none;  
+            user-select: none;  
+            -webkit-user-select: none;  
+        }  #gameCanvas {  
+        display: block;  
+        width: 100%;  
+        height: 100%;  
+    }  
+
+    #ui-layer {  
+        position: absolute;  
+        top: 0;  
+        left: 0;  
+        width: 100%;  
+        height: 100%;  
+        pointer-events: none;  
+        display: flex;  
+        flex-direction: column;  
+        justify-content: space-between;  
+    }  
+
+    .hud {  
+        padding: 20px;  
+        color: #fff;  
+        text-shadow: 0 0 5px #0ff;  
+        font-size: 24px;  
+        display: flex;  
+        justify-content: space-between;  
+        font-weight: bold;  
+    }  
+
+    #start-screen, #game-over-screen {  
+        position: absolute;  
+        top: 0;  
+        left: 0;  
+        width: 100%;  
+        height: 100%;  
+        background: rgba(0, 0, 0, 0.85);  
+        display: flex;  
+        flex-direction: column;  
+        align-items: center;  
+        justify-content: center;  
+        color: white;  
+        z-index: 10;  
+        pointer-events: auto;  
+    }  
+
+    h1 {  
+        font-size: 48px;  
+        margin-bottom: 10px;  
+        text-align: center;  
+        line-height: 1.2;  
+        background: linear-gradient(45deg, #ff9933, #ffffff, #138808);  
+        -webkit-background-clip: text;  
+        -webkit-text-fill-color: transparent;  
+        text-shadow: 0px 0px 15px rgba(255, 153, 51, 0.5);  
+    }  
+
+    p {  
+        font-size: 20px;  
+        text-align: center;  
+        max-width: 85%;  
+        margin-bottom: 30px;  
+        color: #eee;  
+        line-height: 1.5;  
+    }  
+
+    .btn {  
+        background: linear-gradient(90deg, #ff9933, #ff5e00);  
+        border: none;  
+        padding: 15px 40px;  
+        color: white;  
+        font-size: 26px;  
+        border-radius: 50px;  
+        cursor: pointer;  
+        box-shadow: 0 0 20px rgba(255, 94, 0, 0.5);  
+        transition: transform 0.1s;  
+        font-weight: bold;  
+        font-family: inherit;  
+        margin-top: 10px;  
+    }  
+
+    .btn:active {  
+        transform: scale(0.95);  
+    }  
+
+    .hidden {  
+        display: none !important;  
+    }  
+
+    /* Sound Toggle Button */  
+    #sound-toggle {  
+        position: absolute;  
+        top: 20px;  
+        right: 20px;  
+        z-index: 20;  
+        background: rgba(255, 255, 255, 0.2);  
+        border: 2px solid white;  
+        border-radius: 50%;  
+        width: 40px;  
+        height: 40px;  
+        color: white;  
+        font-size: 20px;  
+        display: flex;  
+        align-items: center;  
+        justify-content: center;  
+        cursor: pointer;  
+        pointer-events: auto;  
+    }  
+
+    @media (max-width: 600px) {  
+        h1 { font-size: 36px; }  
+        .btn { font-size: 22px; padding: 12px 30px; }  
+        .hud { font-size: 20px; }  
+    }  
+</style>
+
+</head>  
+<body>  <canvas id="gameCanvas"></canvas>  
+
+<!-- Sound Toggle -->  
+<div id="sound-toggle">🔊</div>  
+
+<!-- UI Overlay -->  
+<div id="ui-layer">  
+    <div class="hud" id="hud">  
+        <span id="scoreDisplay">ਨੰਬਰ: 0</span>  
+        <span id="healthDisplay">ਜਾਨ: 100%</span>  
+    </div>  
+</div>  
+
+<!-- Start Screen -->  
+<div id="start-screen">  
+    <h1>ਗਲੈਕਸੀ ਦਾ ਰਾਖਾ</h1>  
+    <p>ਜਹਾਜ਼ ਚਲਾਉਣ ਲਈ ਉਂਗਲ ਨਾਲ ਖਿੱਚੋ।<br>ਦੁਸ਼ਮਣਾਂ ਨੂੰ ਤਬਾਹ ਕਰੋ ਅਤੇ ਬਚੋ!</p>  
+    <button class="btn" id="startBtn">ਖੇਡ ਸ਼ੁਰੂ ਕਰੋ</button>  
+</div>  
+
+<!-- Game Over Screen -->  
+<div id="game-over-screen" class="hidden">  
+    <h1 style="-webkit-text-fill-color: #ff4444;">ਖੇਡ ਖਤਮ!</h1>  
+    <p>ਕੋਈ ਗੱਲ ਨਹੀਂ ਸ਼ੇਰਾ!<br>ਤੁਹਾਡੇ ਕੁੱਲ ਨੰਬਰ: <span id="finalScore" style="color: #ff9933; font-weight: bold; font-size: 28px;">0</span></p>  
+    <button class="btn" id="restartBtn">ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ</button>  
+</div>
+
+<script>  
+    // --- Audio System (Synthesizer) ---  
+    // We create sound using math so no external files are needed  
+    const AudioContext = window.AudioContext || window.webkitAudioContext;  
+    let audioCtx;  
+    let soundEnabled = true;  
+  
+    function initAudio() {  
+        if (!audioCtx) {  
+            audioCtx = new AudioContext();  
+        }  
+        if (audioCtx.state === 'suspended') {  
+            audioCtx.resume();  
+        }  
+    }  
+  
+    const soundToggle = document.getElementById('sound-toggle');  
+    soundToggle.addEventListener('click', () => {  
+        soundEnabled = !soundEnabled;  
+        soundToggle.innerText = soundEnabled ? '🔊' : '🔇';  
+    });  
+  
+    function playSound(type) {  
+        if (!soundEnabled || !audioCtx) return;  
+  
+        const osc = audioCtx.createOscillator();  
+        const gainNode = audioCtx.createGain();  
+  
+        osc.connect(gainNode);  
+        gainNode.connect(audioCtx.destination);  
+  
+        const now = audioCtx.currentTime;  
+  
+        if (type === 'shoot') {  
+            // High pitch laser sound  
+            osc.type = 'sawtooth';  
+            osc.frequency.setValueAtTime(600, now);  
+            osc.frequency.exponentialRampToValueAtTime(100, now + 0.15);  
+            gainNode.gain.setValueAtTime(0.1, now);  
+            gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.15);  
+            osc.start(now);  
+            osc.stop(now + 0.15);  
+        } else if (type === 'explosion') {  
+            // Low pitch boom sound  
+            osc.type = 'square';  
+            osc.frequency.setValueAtTime(150, now);  
+            osc.frequency.exponentialRampToValueAtTime(0.01, now + 0.3);  
+            gainNode.gain.setValueAtTime(0.2, now);  
+            gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.3);  
+            osc.start(now);  
+            osc.stop(now + 0.3);  
+        } else if (type === 'powerup') {  
+            // Happy chime for "Balle Balle"  
+            osc.type = 'sine';  
+            osc.frequency.setValueAtTime(400, now);  
+            osc.frequency.linearRampToValueAtTime(800, now + 0.1);  
+            gainNode.gain.setValueAtTime(0.1, now);  
+            gainNode.gain.linearRampToValueAtTime(0, now + 0.3);  
+            osc.start(now);  
+            osc.stop(now + 0.3);  
+        }  
+    }  
+  
+  
+    // --- Game Constants & Setup ---  
+    const canvas = document.getElementById('gameCanvas');  
+    const ctx = canvas.getContext('2d');  
+      
+    // UI Elements  
+    const startScreen = document.getElementById('start-screen');  
+    const gameOverScreen = document.getElementById('game-over-screen');  
+    const scoreDisplay = document.getElementById('scoreDisplay');  
+    const healthDisplay = document.getElementById('healthDisplay');  
+    const finalScoreDisplay = document.getElementById('finalScore');  
+    const startBtn = document.getElementById('startBtn');  
+    const restartBtn = document.getElementById('restartBtn');  
+  
+    // Punjabi Compliments  
+    const compliments = [  
+        "ਬੱਲੇ ਬੱਲੇ!", "ਸ਼ਾਬਾਸ਼!", "ਚੱਕ ਦੇ ਫੱਟੇ!",   
+        "ਸਿਰਾ!", "ਕਮਾਲ ਕਰ ਤੀ!", "ਅੱਤ ਕਰਾਤੀ!",   
+        "ਜਿਉਂਦਾ ਰਹਿ!", "ਓਏ ਹੋਏ!", "ਧੂੜਾਂ ਪੱਟ ਤੀਆਂ!"  
+    ];  
+  
+    let animationId;  
+    let score = 0;  
+    let gameActive = false;  
+      
+    // Responsive Canvas  
+    function resizeCanvas() {  
+        canvas.width = window.innerWidth;  
+        canvas.height = window.innerHeight;  
+    }  
+    window.addEventListener('resize', resizeCanvas);  
+    resizeCanvas();  
+  
+    // --- Game Objects ---  
+  
+    const player = {  
+        x: 0, y: 0, width: 40, height: 50, color: '#ff9933',  
+        speed: 0, hp: 100, targetX: 0, bulletTimer: 0, bulletInterval: 12,  
+          
+        reset: function() {  
+            this.x = canvas.width / 2;  
+            this.y = canvas.height - 100;  
+            this.targetX = this.x;  
+            this.hp = 100;  
+            this.width = canvas.width < 500 ? 45 : 65;  
+            this.height = canvas.width < 500 ? 55 : 75;  
+        },  
+  
+        draw: function() {  
+            ctx.save();  
+            ctx.translate(this.x, this.y);  
+            // Ship Body  
+            ctx.beginPath();  
+            ctx.moveTo(0, -this.height/2);  
+            ctx.lineTo(this.width/2, this.height/2);  
+            ctx.lineTo(0, this.height/2 - 15);  
+            ctx.lineTo(-this.width/2, this.height/2);  
+            ctx.closePath();  
+            ctx.fillStyle = this.color;  
+            ctx.fill();  
+            // Stripe  
+            ctx.fillStyle = '#0000ff';   
+            ctx.beginPath();  
+            ctx.moveTo(0, -this.height/4);  
+            ctx.lineTo(5, 10);  
+            ctx.lineTo(-5, 10);  
+            ctx.fill();  
+            // Engine  
+            ctx.shadowBlur = 20;  
+            ctx.shadowColor = '#ff5e00';  
+            ctx.fillStyle = '#fff';  
+            ctx.beginPath();  
+            ctx.arc(0, this.height/2 - 5, 6, 0, Math.PI * 2);  
+            ctx.fill();  
+            ctx.restore();  
+        },  
+  
+        update: function() {  
+            this.x += (this.targetX - this.x) * 0.2;  
+            if (this.x < this.width/2) this.x = this.width/2;  
+            if (this.x > canvas.width - this.width/2) this.x = canvas.width - this.width/2;  
+  
+            this.bulletTimer++;  
+            if (this.bulletTimer >= this.bulletInterval) {  
+                bullets.push(new Bullet(this.x, this.y - this.height/2));  
+                this.bulletTimer = 0;  
+                playSound('shoot'); // Play Sound on Shoot  
+            }  
+        }  
+    };  
+  
+    class Bullet {  
+        constructor(x, y) {  
+            this.x = x; this.y = y; this.radius = 5; this.speed = 12; this.active = true;  
+        }  
+        update() { this.y -= this.speed; if (this.y < 0) this.active = false; }  
+        draw() {  
+            ctx.beginPath();  
+            ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);  
+            ctx.fillStyle = '#00ffff';  
+            ctx.shadowBlur = 10; ctx.shadowColor = '#00ffff'; ctx.fill(); ctx.shadowBlur = 0;  
+        }  
+    }  
+  
+    class FloatingText {  
+        constructor(text, x, y) {  
+            this.text = text; this.x = x; this.y = y;  
+            this.alpha = 1.0; this.velocity = -2; this.life = 60;  
+        }  
+        update() { this.y += this.velocity; this.life--; this.alpha = this.life / 60; }  
+        draw() {  
+            if (this.life <= 0) return;  
+            ctx.save();  
+            ctx.font = "bold 24px Arial";  
+            ctx.fillStyle = `rgba(255, 255, 0, ${this.alpha})`;  
+            ctx.textAlign = "center";  
+            ctx.shadowColor = "black"; ctx.shadowBlur = 4;  
+            ctx.fillText(this.text, this.x, this.y);  
+            ctx.restore();  
+        }  
+    }  
+  
+    class Enemy {  
+        constructor() {  
+            this.radius = Math.random() * 18 + 15;   
+            this.x = Math.random() * (canvas.width - this.radius * 2) + this.radius;  
+            this.y = -this.radius - 20;  
+            this.speed = Math.random() * 2 + 3 + (score / 8000);  
+            this.hp = Math.floor(this.radius / 8);  
+            this.color = `hsl(${Math.random() * 100}, 80%, 50%)`;  
+            this.active = true;  
+            this.type = Math.random() > 0.75 ? 'meteor' : 'ship';  
+        }  
+        update() { this.y += this.speed; if (this.y > canvas.height + this.radius) this.active = false; }  
+        draw() {  
+            ctx.save(); ctx.translate(this.x, this.y);  
+            if (this.type === 'ship') {  
+                ctx.fillStyle = this.color;  
+                ctx.beginPath();  
+                ctx.moveTo(0, this.radius); ctx.lineTo(this.radius, -this.radius); ctx.lineTo(-this.radius, -this.radius);  
+                ctx.closePath(); ctx.fill();  
+                ctx.fillStyle = 'rgba(0,0,0,0.3)';  
+                ctx.beginPath(); ctx.arc(0, 0, this.radius/2, 0, Math.PI*2); ctx.fill();  
+            } else {  
+                ctx.fillStyle = '#555'; ctx.beginPath(); ctx.arc(0, 0, this.radius, 0, Math.PI*2); ctx.fill();  
+                ctx.strokeStyle = '#333'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-5, -5); ctx.lineTo(5, 5); ctx.stroke();  
+            }  
+            ctx.restore();  
+        }  
+    }  
+  
+    class Particle {  
+        constructor(x, y, color) {  
+            this.x = x; this.y = y; this.color = color;  
+            this.size = Math.random() * 4 + 2;  
+            this.speedX = Math.random() * 6 - 3; this.speedY = Math.random() * 6 - 3;  
+            this.life = 100;  
+        }  
+        update() { this.x += this.speedX; this.y += this.speedY; this.life -= 3; }  
+        draw() {  
+            ctx.globalAlpha = this.life / 100; ctx.fillStyle = this.color;  
+            ctx.fillRect(this.x, this.y, this.size, this.size); ctx.globalAlpha = 1.0;  
+        }  
+    }  
+  
+    class Star {  
+        constructor() {  
+            this.x = Math.random() * canvas.width; this.y = Math.random() * canvas.height;  
+            this.size = Math.random() * 2; this.speed = Math.random() * 5 + 1; this.brightness = Math.random();  
+        }  
+        update() {  
+            this.y += this.speed;  
+            if (this.y > canvas.height) { this.y = 0; this.x = Math.random() * canvas.width; }  
+        }  
+        draw() {  
+            ctx.fillStyle = `rgba(255, 255, 255, ${this.brightness})`;  
+            ctx.fillRect(this.x, this.y, this.size, this.size);  
+        }  
+    }  
+  
+    // --- State & Logic ---  
+    let bullets = [], enemies = [], particles = [], stars = [], floatingTexts = [];  
+    let isTouchActive = false;  
+  
+    canvas.addEventListener('mousemove', (e) => { if (!gameActive) return; player.targetX = e.clientX; });  
+    canvas.addEventListener('touchstart', (e) => {   
+        if (!gameActive) return;   
+        isTouchActive = true;   
+        player.targetX = e.touches[0].clientX;   
+        initAudio(); // Ensure audio starts on touch  
+    }, {passive: false});  
+    canvas.addEventListener('touchmove', (e) => {   
+        if (!gameActive) return;   
+        e.preventDefault();   
+        player.targetX = e.touches[0].clientX;   
+    }, {passive: false});  
+  
+    function createStars() { for(let i=0; i<60; i++) stars.push(new Star()); }  
+    function spawnEnemy() { if (Math.random() < 0.025 + (score / 8000)) enemies.push(new Enemy()); }  
+    function createExplosion(x, y, color) { for(let i=0; i<12; i++) particles.push(new Particle(x, y, color)); }  
+  
+    function checkCollisions() {  
+        bullets.forEach(bullet => {  
+            enemies.forEach(enemy => {  
+                if (bullet.active && enemy.active) {  
+                    const dx = bullet.x - enemy.x;  
+                    const dy = bullet.y - enemy.y;  
+                    if (Math.sqrt(dx * dx + dy * dy) < enemy.radius + bullet.radius) {  
+                        bullet.active = false;  
+                        enemy.hp--;  
+                        if (enemy.hp <= 0) {  
+                            enemy.active = false;  
+                            score += 10;  
+                            createExplosion(enemy.x, enemy.y, enemy.color);  
+                            scoreDisplay.innerText = `ਨੰਬਰ: ${score}`;  
+                            playSound('explosion'); // Play Boom  
+  
+                            if (Math.random() < 0.25) {  
+                                const randomText = compliments[Math.floor(Math.random() * compliments.length)];  
+                                floatingTexts.push(new FloatingText(randomText, enemy.x, enemy.y));  
+                                playSound('powerup'); // Play Chime  
+                            }  
+                        } else {  
+                            createExplosion(bullet.x, bullet.y, '#fff');  
+                        }  
+                    }  
+                }  
+            });  
+        });  
+  
+        enemies.forEach(enemy => {  
+            if (enemy.active) {  
+                const dx = player.x - enemy.x;  
+                const dy = player.y - enemy.y;  
+                if (Math.sqrt(dx * dx + dy * dy) < enemy.radius + player.width/2) {  
+                    enemy.active = false;  
+                    player.hp -= 20;  
+                    createExplosion(enemy.x, enemy.y, 'red');  
+                    createExplosion(player.x, player.y, 'orange');  
+                    healthDisplay.innerText = `ਜਾਨ: ${Math.max(0, player.hp)}%`;  
+                    playSound('explosion'); // Play Boom on hit  
+                    if (player.hp <= 0) endGame();  
+                }  
+            }  
+        });  
+    }  
+  
+    function gameLoop() {  
+        if (!gameActive) return;  
+  
+        ctx.fillStyle = '#000011';  
+        ctx.fillRect(0, 0, canvas.width, canvas.height);  
+  
+        stars.forEach(s => { s.update(); s.draw(); });  
+        player.update(); player.draw();  
+        spawnEnemy();  
+  
+        bullets = bullets.filter(b => b.active); bullets.forEach(b => { b.update(); b.draw(); });  
+        enemies = enemies.filter(e => e.active); enemies.forEach(e => { e.update(); e.draw(); });  
+        particles = particles.filter(p => p.life > 0); particles.forEach(p => { p.update(); p.draw(); });  
+        floatingTexts = floatingTexts.filter(t => t.life > 0); floatingTexts.forEach(t => { t.update(); t.draw(); });  
+  
+        checkCollisions();  
+        requestAnimationFrame(gameLoop);  
+    }  
+  
+    function startGame() {  
+        initAudio(); // Important: Start audio engine on button click  
+        score = 0; bullets = []; enemies = []; particles = []; floatingTexts = [];  
+        scoreDisplay.innerText = "ਨੰਬਰ: 0";  
+        healthDisplay.innerText = "ਜਾਨ: 100%";  
+        player.reset();  
+        if (stars.length === 0) createStars();  
+        startScreen.classList.add('hidden');  
+        gameOverScreen.classList.add('hidden');  
+        gameActive = true;  
+        requestAnimationFrame(gameLoop);  
+    }  
+  
+    function endGame() {  
+        gameActive = false;  
+        finalScoreDisplay.innerText = score;  
+        gameOverScreen.classList.remove('hidden');  
+    }  
+  
+    startBtn.addEventListener('click', startGame);  
+    restartBtn.addEventListener('click', startGame);  
+      
+    ctx.fillStyle = '#000';  
+    ctx.fillRect(0, 0, canvas.width, canvas.height);  
+  
+</script>  </body>  
+</html><script>function startBgMusic() {
+    if (!soundEnabled || !audioCtx) return;
+    if (bgMusicInterval) clearInterval(bgMusicInterval);
+
+    bgMusicInterval = setInterval(() => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = "sine";
+        osc.frequency.value = 220 + Math.random() * 100; // Punjabi folk vibe
+        gain.gain.value = 0.05;
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.3);
+    }, 500);
+}startBgMusic();</script>
